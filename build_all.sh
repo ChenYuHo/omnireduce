@@ -100,9 +100,9 @@ mkdir build
 cd build
 
 if [[ $@ == *'DEBUG'* ]]; then
-  CXXFLAGS='-g -O0' cmake -DUSE_REDIS=1 -DUSE_AVX=1 $HOROVOD_ARGS ..
+  CXXFLAGS='-g -O0' cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $HOROVOD_ARGS ..
 else
-  cmake -DUSE_REDIS=1 -DUSE_AVX=1 $HOROVOD_ARGS ..
+  cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $HOROVOD_ARGS ..
 fi
 
 make -j
@@ -112,7 +112,7 @@ if [[ $@ == *'INSTALL'* ]]; then
 fi
 
 # Build experiments
-cd ../daiet/experiments/exp1/
+cd ../../daiet/experiments/exp1/
 mkdir -p build
 cd build
 find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
@@ -131,7 +131,7 @@ cmake ${EXP_ARGS} ..
 make -j
 
 # Build example
-cd ../../../daiet/example
+cd ../../../example/
 mkdir -p build
 cd build
 find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
