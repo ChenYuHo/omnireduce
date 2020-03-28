@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD
+# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD CONDA
 set -e
 set -x
 
@@ -53,8 +53,12 @@ if [[ $@ == *'DEBUG'* ]]; then
 fi
 if [[ $@ == *'HOROVOD'* ]]; then
   echo 'HOROVOD SET'
-  GLOO_CMAKE_ARGS+='-DUSE_REDIS=ON -DUSE_MPI=1 -DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=0"'
-  EXP_ARGS+='-DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=0"'
+  GLOO_CMAKE_ARGS+='-DUSE_REDIS=ON -DUSE_MPI=1 -DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"'
+  EXP_ARGS+='-DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"'
+fi
+if [[ $@ == *'CONDA'* ]]; then
+  GLOO_CMAKE_ARGS+="-DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}"
+  EXP_ARGS+='-DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"'
 fi
 
 # Build DPDK
@@ -78,7 +82,11 @@ if [[ $@ != *'SKIP_DPDK'* ]]; then
   make EXTRA_CFLAGS="${DPDK_ARGS}" -j
 
   if [[ $@ == *'INSTALL'* ]]; then
-    make install
+    if [[ $@ == *'CONDA'* ]]; then
+      make install-sdk install-runtime prefix=${CONDA_PREFIX}
+    else
+      make install
+    fi
   fi
 fi
 cd ../..
@@ -89,7 +97,11 @@ rm -rf build
 make ${DAIET_ARGS} -j
 
 if [[ $@ == *'INSTALL'* ]]; then
-  make libinstall
+  if [[ $@ == *'CONDA'* ]]; then
+    make libinstall PREFIX=${CONDA_PREFIX}
+  else
+    make libinstall
+  fi
 fi
 
 cd ../gloo
@@ -102,12 +114,12 @@ cd build
 if [[ $@ == *'DEBUG'* ]]; then
   CXXFLAGS='-g -O0' cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
 else
-  cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
+  cmake -DBUILD_TEST=OFF -DBUILD_BENCHMARK=OFF -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
 fi
 
 make -j
 
-if [[ $@ == *'INSTALL'* ]]; then
+if [[ $@ == *'INSTALL'* ]] || [[ $@ == *'CONDA'* ]] ; then
   make install
 fi
 
