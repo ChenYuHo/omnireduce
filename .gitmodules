@@ -4,3 +4,7 @@
 [submodule "gloo"]
 	path = gloo
 	url = git@github.com:sands-lab/gloo.git
+[submodule "pytorch"]
+	path = pytorch
+	url = git@github.com:sands-lab/daiet-pytorch.git
+	branch = daiet
