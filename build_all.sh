@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD CONDA OFFLOAD_BITMAP NOSCALING
+# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD CONDA OFFLOAD_BITMAP NOSCALING PYTORCH
 set -e
 set -x
 
@@ -10,6 +10,16 @@ DAIET_ARGS=''
 EXP_ARGS=''
 PS_ARGS=''
 HOROVOD_ARGS=''
+
+if [[ $@ == *'CONDA'* ]]; then
+  echo "will install libraries to ${CONDA_PREFIX:-'/'}"
+  read -p "Continue (y/N)? " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]
+  then
+      [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+  fi
+fi
 
 if [[ $@ == *'MLX5'* ]]; then
   echo 'MLX5 SUPPORT'
@@ -63,6 +73,9 @@ fi
 if [[ $@ == *'OFFLOAD_BITMAP'* ]]; then
   echo 'OFFLOAD_BITMAP SET'
   DAIET_ARGS+='OFFLOAD_BITMAP=ON '
+  OFFLOAD_BITMAP=1
+else
+  OFFLOAD_BITMAP=0
 fi
 if [[ $@ == *'NOSCALING'* ]]; then
   echo 'NOSCALING SET'
@@ -166,3 +179,18 @@ cd ../../ps
 make clean
 make ${PS_ARGS} -j
 cd $CWD
+
+
+if [[ $@ == *'PYTORCH'* ]]; then
+  find pytorch/ -name libc10d.a | xargs rm -f
+  find pytorch/ -name libtorch_python.so | xargs rm -f
+  cd pytorch
+  OFFLOAD_BITMAP=${OFFLOAD_BITMAP} ${CONDA_PREFIX}/bin/python setup.py install
+  cd $CWD
+  if ! ${CONDA_PREFIX}/bin/python -c "import torchvision"; then
+    echo "install torchvision"
+    cd torchvision
+    ${CONDA_PREFIX}/bin/python setup.py install
+    cd $CWD
+  fi
+fi

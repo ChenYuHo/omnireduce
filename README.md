@@ -9,6 +9,5 @@
 ```bash
 conda env create --prefix ../env-pytorch --file environment.yml
 conda activate env-pytorch
-./build_all.sh MLX5 CONDA INSTALL OFFLOAD_BITMAP NOSCALING
-OFFLOAD_BITMAP=1 python setup.py install
+./build_all.sh MLX5 CONDA INSTALL OFFLOAD_BITMAP NOSCALING PYTORCH
 ```
