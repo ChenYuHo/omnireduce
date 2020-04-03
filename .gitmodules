@@ -8,3 +8,6 @@
 	path = pytorch
 	url = git@github.com:sands-lab/daiet-pytorch.git
 	branch = daiet
+[submodule "torchvision"]
+	path = torchvision
+	url = git@github.com:pytorch/vision.git
