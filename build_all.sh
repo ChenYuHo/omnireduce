@@ -178,19 +178,39 @@ make -j
 cd ../../ps
 make clean
 make ${PS_ARGS} -j
-cd $CWD
 
 
 if [[ $@ == *'PYTORCH'* ]]; then
-  find pytorch/ -name libc10d.a | xargs rm -f
-  find pytorch/ -name libtorch_python.so | xargs rm -f
+  cd $CWD
   cd pytorch
   OFFLOAD_BITMAP=${OFFLOAD_BITMAP} ${CONDA_PREFIX}/bin/python setup.py install
-  cd $CWD
-  if ! ${CONDA_PREFIX}/bin/python -c "import torchvision"; then
+  if ${CONDA_PREFIX}/bin/python -c "import torchvision"; then
+    echo "torchvision installed"
+  else
     echo "install torchvision"
+    cd $CWD
     cd torchvision
     ${CONDA_PREFIX}/bin/python setup.py install
-    cd $CWD
   fi
 fi
+
+if [[ $@ == *'HOROVOD'* ]]; then
+  if ${CONDA_PREFIX}/bin/python -c "import torch"; then
+    echo "PyTorch found";
+    HAS_PYTORCH=1;
+  else
+    echo "PyTorch not found";
+    HAS_PYTORCH=0;
+  fi;
+  if ${CONDA_PREFIX}/bin/python -c "import tensorflow"; then
+    echo "Tensorflow found";
+    HAS_TENSORFLOW=1;
+  else
+    echo "Tensorflow not found";
+    HAS_TENSORFLOW=0;
+  fi
+  cd $CWD
+  cd horovod
+  HOROVOD_WITH_GLOO=1 HOROVOD_WITH_TENSORFLOW=${HAS_TENSORFLOW} HOROVOD_WITH_PYTORCH=${HAS_PYTORCH} HOROVOD_WITHOUT_MXNET=1 ${CONDA_PREFIX}/bin/python setup.py install
+fi
+cd $CWD

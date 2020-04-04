@@ -5,9 +5,19 @@
 ./prepare.sh [--depth=10] # optional --depth shallow copys submodules
 ```
 
-## offload bitmap
+## create conda environment
 ```bash
-conda env create --prefix ../env-pytorch --file environment.yml
-conda activate env-pytorch
+conda env create --prefix ../env --file environment.yml
+```
+
+## build
+```bash
+conda activate ../env
+./build_all.sh MLX5 CONDA INSTALL NOSCALING PYTORCH HOROVOD
+```
+
+## offload bitmap (only supports PyTorch)
+```bash
+conda activate ../env
 ./build_all.sh MLX5 CONDA INSTALL OFFLOAD_BITMAP NOSCALING PYTORCH
 ```

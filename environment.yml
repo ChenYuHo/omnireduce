@@ -1,23 +1,35 @@
-name: switchml-pytorch
+name: omnireduce
 
 channels:
   - conda-forge
-  - pytorch
   - defaults
+  - pytorch
 
 dependencies:
-  - cffi 
-  - cmake 
+  - defaults::boost-cpp=1.65 # compatible with daiet
+  - cffi # horovod, pytorch
+  - cloudpickle  # horovod
+  - cmake # pytorch
   - cudatoolkit-dev=10.1
   - cudnn=7.6
+  - h5py
+  - libprotobuf=3.8 # tensorflow build
   - magma-cuda101
-  - mkl 
-  - mkl-include
+  - mkl # pytorch
+  - mkl-include # pytorch
   - mpi4py
-  - ninja
-  - numpy
-  - openmpi
+  - nccl=2.6
+  - ninja # pytorch
+  - numpy # pytorch
+  - openmpi=4.0
+  - pip=20.0
+  - pip:
+    - wandb
+  - psutil # horovod
+  - pycparser # horovod
+  - pyspark
   - python=3.7
-  - pyyaml
-  - setuptools 
-  
+  - pyyaml # horovod, pytorch
+  - scipy
+  - setuptools # pytorch
+  - tensorflow-gpu=1.15
