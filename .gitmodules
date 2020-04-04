@@ -11,3 +11,6 @@
 [submodule "torchvision"]
 	path = torchvision
 	url = git@github.com:pytorch/vision.git
+[submodule "horovod"]
+	path = horovod
+	url = git@github.com:sands-lab/daiet-horovod.git
