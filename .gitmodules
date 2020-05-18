@@ -14,3 +14,15 @@
 [submodule "horovod"]
 	path = horovod
 	url = git@github.com:sands-lab/daiet-horovod.git
+[submodule "apex"]
+	path = apex
+	url = git@github.com:NVIDIA/apex.git
+[submodule "scripts/UGATIT"]
+	path = scripts/UGATIT
+	url = git@github.com:sands-lab/UGATIT.git
+[submodule "scripts/nvidia-examples"]
+	path = scripts/nvidia-examples
+	url = git@github.com:sands-lab/DeepLearningExamples.git
+[submodule "scripts/tf_cnn_benchmarks"]
+	path = scripts/tf_cnn_benchmarks
+	url = git@github.com:ChenYuHo/tf_cnn_benchmarks.git
