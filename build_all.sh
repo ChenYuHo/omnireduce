@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD CONDA OFFLOAD_BITMAP NOSCALING PYTORCH
+# FLAGS: INSTALL MLX5 COLOCATED LATENCIES TIMESTAMPS TIMERS DEBUG HOROVOD CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2 COUNTERS NO_FILL_STORE RANDOMK
 set -e
 set -x
 
@@ -19,6 +19,8 @@ if [[ $@ == *'CONDA'* ]]; then
   then
       [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
   fi
+  THIS_TIME=`date`
+  echo "build_all.sh invoked at ${THIS_TIME} with $@" > ${CONDA_PREFIX}/build-info.txt
 fi
 
 if [[ $@ == *'MLX5'* ]]; then
@@ -45,6 +47,11 @@ if [[ $@ == *'COUNTERS'* ]]; then
   echo 'COUNTERS SET'
   DAIET_ARGS+='COUNTERS=ON '
 fi
+if [[ $@ == *'ALGO2'* ]]; then
+  echo 'ALGO2 SET'
+  DAIET_ARGS+='ALGO2=ON '
+  PS_ARGS+='ALGO2=ON '
+fi
 if [[ $@ == *'TIMERS'* ]]; then
   echo 'TIMERS SET'
   DAIET_ARGS+='TIMERS=ON '
@@ -69,13 +76,11 @@ fi
 if [[ $@ == *'CONDA'* ]]; then
   GLOO_CMAKE_ARGS+="-DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX}"
   EXP_ARGS+='-DCMAKE_CXX_FLAGS="-D_GLIBCXX_USE_CXX11_ABI=1"'
+  DAIET_EXTRA_CXX_FLAGS+="-I${CONDA_PREFIX}/include -L${CONDA_PREFIX}/lib "
 fi
 if [[ $@ == *'OFFLOAD_BITMAP'* ]]; then
   echo 'OFFLOAD_BITMAP SET'
   DAIET_ARGS+='OFFLOAD_BITMAP=ON '
-  OFFLOAD_BITMAP=1
-else
-  OFFLOAD_BITMAP=0
 fi
 if [[ $@ == *'NOSCALING'* ]]; then
   echo 'NOSCALING SET'
@@ -103,20 +108,24 @@ if [[ $@ != *'SKIP_DPDK'* ]]; then
   make defconfig T=x86_64-native-linuxapp-gcc
   make EXTRA_CFLAGS="${DPDK_ARGS}" -j
 
-  if [[ $@ == *'INSTALL'* ]]; then
-    if [[ $@ == *'CONDA'* ]]; then
-      make install-sdk install-runtime prefix=${CONDA_PREFIX}
-    else
-      make install
-    fi
+fi
+
+if [[ $@ == *'INSTALL'* ]]; then
+  if [[ $@ == *'CONDA'* ]]; then
+    make install-sdk install-runtime prefix=${CONDA_PREFIX}
+  else
+    make install
   fi
 fi
+
 cd ../..
 
-# Build DAIET
-make clean
-rm -rf build
-make ${DAIET_ARGS} -j
+if [[ $@ != *'SKIP_DAIET'* ]]; then
+  # Build DAIET
+  make clean
+  rm -rf build
+  EXTRA_CXX_FLAGS=${DAIET_EXTRA_CXX_FLAGS} make ${DAIET_ARGS} -j
+fi
 
 if [[ $@ == *'INSTALL'* ]]; then
   if [[ $@ == *'CONDA'* ]]; then
@@ -128,89 +137,154 @@ fi
 
 cd ../gloo
 
-# Build Gloo
-rm -rf build
-mkdir build
-cd build
+if [[ $@ != *'SKIP_GLOO'* ]]; then
+  # Build Gloo
+  rm -rf build
+  mkdir build
+  cd build
 
-if [[ $@ == *'DEBUG'* ]]; then
-  CXXFLAGS='-g -O0' cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
-else
-  cmake -DBUILD_TEST=OFF -DBUILD_BENCHMARK=OFF -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
+  if [[ $@ == *'DEBUG'* ]]; then
+    CXXFLAGS='-g -O0' cmake -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
+  else
+    cmake -DBUILD_TEST=OFF -DBUILD_BENCHMARK=OFF -DUSE_DAIET=1 -DUSE_REDIS=1 -DUSE_AVX=1 $GLOO_CMAKE_ARGS ..
+  fi
+
+  make -j
+  cd ..
 fi
 
-make -j
-
-if [[ $@ == *'INSTALL'* ]] || [[ $@ == *'CONDA'* ]] ; then
+if [[ $@ == *'INSTALL'* ]]; then
+  cd build
+  if [[ $@ == *'CONDA'* ]]; then
+    cmake -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
+  fi
   make install
+  cd ..
 fi
 
 # Build experiments
-cd ../../daiet/experiments/exp1/
-mkdir -p build
-cd build
-find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
+cd ../daiet/experiments/exp1/
+if [[ $@ != *'SKIP_EXPS'* ]]; then
+  mkdir -p build
+  cd build
+  find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
 
-cmake ${EXP_ARGS} ..
+  cmake ${EXP_ARGS} ..
 
-make -j
+  make -j
+  cd ..
+fi
 
-cd ../../exp2
-mkdir -p build
-cd build
-find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
+cd ../exp2
+if [[ $@ != *'SKIP_EXPS'* ]]; then
+  mkdir -p build
+  cd build
+  find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
 
-cmake ${EXP_ARGS} ..
+  cmake ${EXP_ARGS} ..
 
-make -j
+  make -j
+  cd ..
+fi
 
 # Build example
-cd ../../../example/
-mkdir -p build
-cd build
-find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
+cd ../../example/
+if [[ $@ != *'SKIP_EXAMPLE'* ]]; then
+  mkdir -p build
+  cd build
+  find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
 
-cmake ${EXP_ARGS} ..
+  cmake ${EXP_ARGS} ..
 
-make -j
+  make -j
+  cd ..
+fi
 
 # Build dedicated PS
-cd ../../ps
-make clean
-make ${PS_ARGS} -j
-
+cd ../ps
+if [[ $@ != *'SKIP_PS'* ]]; then
+  make clean
+  make ${PS_ARGS} -j
+fi
 
 if [[ $@ == *'PYTORCH'* ]]; then
   cd $CWD
   cd pytorch
-  OFFLOAD_BITMAP=${OFFLOAD_BITMAP} ${CONDA_PREFIX}/bin/python setup.py install
+  if [[ $@ == *'OFFLOAD_BITMAP'* ]]; then
+    sed -i 's/#ifdef OFFLOAD_BITMAP/#ifndef OFFLOAD_BITMAP/' torch/lib/c10d/ProcessGroupGloo.cpp
+    sed -i 's/#ifdef OFFLOAD_BITMAP/#ifndef OFFLOAD_BITMAP/' ${CONDA_PREFIX}/include/daiet/DaietContext.hpp
+  else
+    sed -i 's/#ifndef OFFLOAD_BITMAP/#ifdef OFFLOAD_BITMAP/' torch/lib/c10d/ProcessGroupGloo.cpp
+    sed -i 's/#ifndef OFFLOAD_BITMAP/#ifdef OFFLOAD_BITMAP/' ${CONDA_PREFIX}/include/daiet/DaietContext.hpp
+  fi
+  if [[ $@ == *'RANDOMK'* ]]; then
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupNCCL.cpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupNCCL.hpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupGloo.cpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupGloo.hpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroup.hpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/csrc/distributed/c10d/reducer.cpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/csrc/distributed/c10d/reducer.h
+  else
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupNCCL.cpp
+    sed -i 's/#ifdef RANDOMK/#ifndef RANDOMK/' torch/lib/c10d/ProcessGroupNCCL.hpp
+    sed -i 's/#ifndef RANDOMK/#ifdef RANDOMK/' torch/lib/c10d/ProcessGroupGloo.cpp
+    sed -i 's/#ifndef RANDOMK/#ifdef RANDOMK/' torch/lib/c10d/ProcessGroupGloo.hpp
+    sed -i 's/#ifndef RANDOMK/#ifdef RANDOMK/' torch/lib/c10d/ProcessGroup.hpp
+    sed -i 's/#ifndef RANDOMK/#ifdef RANDOMK/' torch/csrc/distributed/c10d/reducer.cpp
+    sed -i 's/#ifndef RANDOMK/#ifdef RANDOMK/' torch/csrc/distributed/c10d/reducer.h
+  fi
+  USE_SYSTEM_NCCL=1 NCCL_INCLUDE_DIR=${CONDA_PREFIX}/include NCCL_LIB_DIR=${CONDA_PREFIX}/lib ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} --record=`basename ${CONDA_PREFIX}`_files.txt
+  cd $CWD/daiet
+  if ${CONDA_PREFIX}/bin/python -c "import apex"; then
+    echo "apex installed"
+  else
+    echo "install apex"
+    cd $CWD
+    cd apex
+    ${CONDA_PREFIX}/bin/python setup.py install --cpp_ext --cuda_ext --prefix=${CONDA_PREFIX} --record=`basename ${CONDA_PREFIX}`_files.txt
+  fi;
+  cd $CWD/daiet
   if ${CONDA_PREFIX}/bin/python -c "import torchvision"; then
     echo "torchvision installed"
   else
     echo "install torchvision"
     cd $CWD
     cd torchvision
-    ${CONDA_PREFIX}/bin/python setup.py install
-  fi
+    ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} --record=`basename ${CONDA_PREFIX}`_files.txt
+  fi;
 fi
 
 if [[ $@ == *'HOROVOD'* ]]; then
-  if ${CONDA_PREFIX}/bin/python -c "import torch"; then
-    echo "PyTorch found";
-    HAS_PYTORCH=1;
-  else
-    echo "PyTorch not found";
-    HAS_PYTORCH=0;
-  fi;
-  if ${CONDA_PREFIX}/bin/python -c "import tensorflow"; then
-    echo "Tensorflow found";
-    HAS_TENSORFLOW=1;
-  else
-    echo "Tensorflow not found";
-    HAS_TENSORFLOW=0;
-  fi
-  cd $CWD
-  cd horovod
-  HOROVOD_WITH_GLOO=1 HOROVOD_WITH_TENSORFLOW=${HAS_TENSORFLOW} HOROVOD_WITH_PYTORCH=${HAS_PYTORCH} HOROVOD_WITHOUT_MXNET=1 ${CONDA_PREFIX}/bin/python setup.py install
+    cd $CWD
+    if [[ $@ == *'OFFLOAD_BITMAP'* ]]; then
+      export OFFLOAD_BITMAP=1
+    else
+      export OFFLOAD_BITMAP=0
+    fi
+    if [[ $@ == *'HOROVOD_NCCL'* ]]; then
+      export HOROVOD_NCCL_LINK=SHARED
+      export HOROVOD_NCCL_HOME=${CONDA_PREFIX}
+      export HOROVOD_CUDA_HOME=${CONDA_PREFIX}
+      export HOROVOD_GPU_ALLREDUCE=NCCL
+    else
+      unset HOROVOD_NCCL_LINK
+      unset HOROVOD_NCCL_HOME
+      unset HOROVOD_CUDA_HOME
+      unset HOROVOD_GPU_ALLREDUCE
+    fi
+    HOROVOD_WITH_GLOO=1 ${CONDA_PREFIX}/bin/pip install --no-cache-dir ./horovod
 fi
+unset OFFLOAD_BITMAP
 cd $CWD
+
+if ${CONDA_PREFIX}/bin/python -c "from nvidia import dali"; then
+  echo "dali installed"
+else
+  ${CONDA_PREFIX}/bin/pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/10.0 nvidia-dali
+fi
+if ${CONDA_PREFIX}/bin/python -c "import SSD"; then
+  echo "SSD installed"
+else
+  ${CONDA_PREFIX}/bin/pip install -v ./scripts/nvidia-examples/PyTorch/Detection/SSD
+fi
