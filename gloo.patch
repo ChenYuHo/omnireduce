@@ -220,11 +220,11 @@ index 904eb8b..650122a 100644
 +  }
 +  void setDataType(gloo::float16 t) {
 +    impl_.datatype = detail::AllreduceOptionsImpl::FLOAT16;
-+    return;    
++    return;
 +  }
 +  void setDataType(float t) {
 +    impl_.datatype = detail::AllreduceOptionsImpl::FLOAT32;
-+    return;    
++    return;
 +  }
 +  void setDataType(long long t) {
 +    impl_.datatype = detail::AllreduceOptionsImpl::INT64;
