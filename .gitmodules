@@ -3,10 +3,10 @@
 	url = git@github.com:sands-lab/daiet.git
 [submodule "gloo"]
 	path = gloo
-	url = git@github.com:sands-lab/gloo.git
+	url = https://github.com/facebookincubator/gloo.git
 [submodule "pytorch"]
 	path = pytorch
-	url = git@github.com:sands-lab/daiet-pytorch.git
+	url = https://github.com/pytorch/pytorch.git
 	branch = daiet
 [submodule "torchvision"]
 	path = torchvision
