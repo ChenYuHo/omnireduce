@@ -55,13 +55,20 @@ RUN mkdir -p /var/run/sshd && cat /etc/ssh/ssh_config | grep -v StrictHostKeyChe
     echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
     mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
 
+# MLNX driver
+ARG MOFED_VER=5.3-1.0.0.1
+RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
+        wget http://content.mellanox.com/ofed/MLNX_OFED-${MOFED_VER}/MLNX_OFED_LINUX-${MOFED_VER}-ubuntu18.04-$(uname -m).tgz && \
+        tar -xzvf *.tgz && \
+        */mlnxofedinstall --user-space-only --without-fw-update --upstream-libs --dpdk --force && \
+        cd /tmp && \
+        rm -rf mofed
+
 # mamba
+ENV PATH="/root/mambaforge/bin:${PATH}"
 RUN cd ~ && \
     wget -O Mambaforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh && \
     bash Mambaforge.sh -b && \
-    ~/mambaforge/bin/conda init && \
-    source /root/.bashrc && \
-    conda activate && \
     mamba install \
     pip \
     openmpi=4 \
@@ -75,14 +82,7 @@ RUN cd ~ && \
     magma-cuda101 -y -c pytorch && \
     rm Mambaforge.sh
 
-# MLNX driver
-ARG MOFED_VER=5.3-1.0.0.1
-RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
-        wget http://content.mellanox.com/ofed/MLNX_OFED-${MOFED_VER}/MLNX_OFED_LINUX-${MOFED_VER}-ubuntu18.04-$(uname -m).tgz && \
-        tar -xzvf *.tgz && \
-        */mlnxofedinstall --user-space-only --without-fw-update --upstream-libs --dpdk --force && \
-        cd /tmp && \
-        rm -rf mofed
+SHELL ["conda", "run", "--no-capture-output", "-n", "base", "/bin/bash", "-c"]
 
 # ENV MOFED_DIR=MLNX_OFED_LINUX-5.3-1.0.0.1-ubuntu18.04-x86_64
 # ENV MOFED_SITE_PLACE=MLNX_OFED-5.3-1.0.0.1
@@ -110,18 +110,20 @@ RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
 # Create a wrapper for OpenMPI to allow running as root by default
 # Configure OpenMPI to run good defaults:
 #   --bind-to none --map-by slot --mca btl_tcp_if_exclude lo,docker0
-RUN mv ${CONDA_PREFIX}/bin/mpirun ${CONDA_PREFIX}/bin/mpirun.real && \
-    echo '#!/bin/bash' > ${MPI_DIR}/mpirun && \
-    echo "${CONDA_PREFIX}/bin/mpirun.real" ' --allow-run-as-root "$@"' >> ${CONDA_PREFIX}/bin/mpirun && \
-    chmod a+x ${CONDA_PREFIX}/bin/mpirun && \
-    echo "hwloc_base_binding_policy = none" >> ${CONDA_PREFIX}/etc/openmpi-mca-params.conf && \
-    echo "rmaps_base_mapping_policy = slot" >> ${CONDA_PREFIX}/etc/openmpi-mca-params.conf && \
-    echo "btl_tcp_if_exclude = lo,docker0" >> ${CONDA_PREFIX}/etc/openmpi-mca-params.conf
+RUN mv /root/mambaforge/bin/mpirun /root/mambaforge/bin/mpirun.real && \
+    echo '#!/bin/bash' > /root/mambaforge/bin/mpirun && \
+    echo "/root/mambaforge/bin/mpirun.real" ' --allow-run-as-root "$@"' >> /root/mambaforge/bin/mpirun && \
+    chmod a+x /root/mambaforge/bin/mpirun && \
+    echo "hwloc_base_binding_policy = none" >> /root/mambaforge/etc/openmpi-mca-params.conf && \
+    echo "rmaps_base_mapping_policy = slot" >> /root/mambaforge/etc/openmpi-mca-params.conf && \
+    echo "btl_tcp_if_exclude = lo,docker0" >> /root/mambaforge/etc/openmpi-mca-params.conf
 
 
-ENV CPLUS_INCLUDE_PATH=$CONDA_PREFIX/include LIBRARY_PATH=$CONDA_PREFIX/lib LD_LIBRARY_PATH=$CONDA_PREFIX/lib
+ENV CPLUS_INCLUDE_PATH=/root/mambaforge/include LIBRARY_PATH=/root/mambaforge/lib LD_LIBRARY_PATH=/root/mambaforge/lib
 
-RUN git clone --branch docker https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
+ARG TORCH_CUDA_ARCH_LIST="6.0"
+
+RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
     ./build_all.sh INSTALL MLX5 TIMERS CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2 NO_FILL_STORE
 
 ARG EXPS_BASE_PATH=/root

@@ -10,7 +10,6 @@ DAIET_ARGS=''
 EXP_ARGS=''
 PS_ARGS=''
 GLOO_CMAKE_ARGS=''
-PYTORCH_ARGS=''
 
 if [[ $@ == *'CONDA'* ]]; then
   echo "will install libraries to ${CONDA_PREFIX:-'/'}"
@@ -72,7 +71,9 @@ fi
 if [[ $@ == *'OFFLOAD_BITMAP'* ]]; then
   echo 'OFFLOAD_BITMAP SET'
   DAIET_ARGS+='OFFLOAD_BITMAP=ON '
-  PYTORCH_ARGS+='OFFLOAD_BITMAP=1 '
+  OFFLOAD_BITMAP=1
+else
+  OFFLOAD_BITMAP=0
 fi
 if [[ $@ == *'NOSCALING'* ]]; then
   echo 'NOSCALING SET'
@@ -190,7 +191,6 @@ fi
 
 # Build PyTorch
 if [[ $@ == *'PYTORCH'* ]]; then
-  VER=`bash $CWD/get_cuda_gencode.sh`
   cd $CWD/pytorch
-  ${PYTORCH_ARGS} TORCH_CUDA_ARCH_LIST="${VER}" BUILD_TEST=0 BUILD_CAFFE2=0 USE_SYSTEM_NCCL=1 NCCL_INCLUDE_DIR=${CONDA_PREFIX}/include NCCL_LIB_DIR=${CONDA_PREFIX}/lib ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} --record=`basename ${CONDA_PREFIX}`_files.txt
+  OFFLOAD_BITMAP=$OFFLOAD_BITMAP BUILD_TEST=0 BUILD_CAFFE2=0 USE_SYSTEM_NCCL=1 NCCL_INCLUDE_DIR=${CONDA_PREFIX}/include NCCL_LIB_DIR=${CONDA_PREFIX}/lib ${CONDA_PREFIX}/bin/python setup.py install --prefix=${CONDA_PREFIX} --record=`basename ${CONDA_PREFIX}`_files.txt
 fi
