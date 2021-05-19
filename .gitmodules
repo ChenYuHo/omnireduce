@@ -1,6 +1,6 @@
 [submodule "daiet"]
 	path = daiet
-	url = git@github.com:sands-lab/daiet.git
+	url = https://github.com/ChenYuHo/daiet.git
 [submodule "gloo"]
 	path = gloo
 	url = https://github.com/facebookincubator/gloo.git
@@ -8,21 +8,3 @@
 	path = pytorch
 	url = https://github.com/pytorch/pytorch.git
 	branch = daiet
-[submodule "torchvision"]
-	path = torchvision
-	url = git@github.com:pytorch/vision.git
-[submodule "horovod"]
-	path = horovod
-	url = git@github.com:sands-lab/daiet-horovod.git
-[submodule "apex"]
-	path = apex
-	url = git@github.com:NVIDIA/apex.git
-[submodule "scripts/UGATIT"]
-	path = scripts/UGATIT
-	url = git@github.com:sands-lab/UGATIT.git
-[submodule "scripts/nvidia-examples"]
-	path = scripts/nvidia-examples
-	url = git@github.com:sands-lab/DeepLearningExamples.git
-[submodule "scripts/tf_cnn_benchmarks"]
-	path = scripts/tf_cnn_benchmarks
-	url = git@github.com:ChenYuHo/tf_cnn_benchmarks.git
