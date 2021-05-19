@@ -198,13 +198,6 @@ index 2db381644c..4613cf4942 100644
      check_file(os.path.join(third_party_path, 'cpuinfo', 'CMakeLists.txt'))
      check_file(os.path.join(third_party_path, 'tbb', 'Makefile'))
      check_file(os.path.join(third_party_path, 'onnx', 'CMakeLists.txt'))
-diff --git a/third_party/protobuf b/third_party/protobuf
-index d0bfd52211..09745575a9 160000
---- a/third_party/protobuf
-+++ b/third_party/protobuf
-@@ -1 +1 @@
--Subproject commit d0bfd5221182da1a7cc280f3337b5e41a89539cf
-+Subproject commit 09745575a923640154bcf307fba8aedff47f240a
 diff --git a/tools/setup_helpers/cmake.py b/tools/setup_helpers/cmake.py
 index 83253cc3a5..786011c7fe 100644
 --- a/tools/setup_helpers/cmake.py
