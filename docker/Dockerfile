@@ -124,7 +124,7 @@ ENV CPLUS_INCLUDE_PATH=/root/mambaforge/include LIBRARY_PATH=/root/mambaforge/li
 ARG TORCH_CUDA_ARCH_LIST="6.0"
 
 RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
-    ./build_all.sh INSTALL MLX5 TIMERS CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2 NO_FILL_STORE
+    ./build_all.sh INSTALL MLX5 TIMERS CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2
 
 ARG EXPS_BASE_PATH=/root
 ARG EXPS_PATH=$EXPS_BASE_PATH/exps
