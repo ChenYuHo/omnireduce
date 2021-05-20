@@ -130,8 +130,6 @@ ARG EXPS_BASE_PATH=/root
 ARG EXPS_PATH=$EXPS_BASE_PATH/exps
 ARG EXPS_GIT_LINK=https://github.com/Phlix1/exps.git
 
-RUN cd /usr/bin && rm python
-
 RUN cd $EXPS_BASE_PATH && git clone $EXPS_GIT_LINK
 
 #For benchmark
