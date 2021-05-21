@@ -101,36 +101,33 @@ if [[ $@ != *'SKIP_DPDK'* ]]; then
   make defconfig T=x86_64-native-linuxapp-gcc
   make EXTRA_CFLAGS="${DPDK_ARGS}" -j
 
-fi
-
-if [[ $@ == *'INSTALL'* ]]; then
-  if [[ $@ == *'CONDA'* ]]; then
-    make install-sdk install-runtime prefix=${CONDA_PREFIX}
-  else
-    make install
+  if [[ $@ == *'INSTALL'* ]]; then
+    if [[ $@ == *'CONDA'* ]]; then
+      make install-sdk install-runtime prefix=${CONDA_PREFIX}
+    else
+      make install
+    fi
   fi
 fi
 
-cd $CWD/daiet
 
 if [[ $@ != *'SKIP_DAIET'* ]]; then
+  cd $CWD/daiet
   # Build DAIET
   make clean
   rm -rf build
   EXTRA_CXX_FLAGS=${DAIET_EXTRA_CXX_FLAGS} make ${DAIET_ARGS} -j
-fi
-
-if [[ $@ == *'INSTALL'* ]]; then
-  if [[ $@ == *'CONDA'* ]]; then
-    make libinstall PREFIX=${CONDA_PREFIX}
-  else
-    make libinstall
+  if [[ $@ == *'INSTALL'* ]]; then
+    if [[ $@ == *'CONDA'* ]]; then
+      make libinstall PREFIX=${CONDA_PREFIX}
+    else
+      make libinstall
+    fi
   fi
 fi
 
-cd $CWD/gloo
-
 if [[ $@ != *'SKIP_GLOO'* ]]; then
+  cd $CWD/gloo
   # Build Gloo
   rm -rf build
   mkdir build
@@ -143,19 +140,19 @@ if [[ $@ != *'SKIP_GLOO'* ]]; then
   fi
 
   make -j
+  if [[ $@ == *'INSTALL'* ]]; then
+    cd $CWD/gloo/build
+    if [[ $@ == *'CONDA'* ]]; then
+      cmake -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
+    fi
+    make install
+  fi
 fi
 
-if [[ $@ == *'INSTALL'* ]]; then
-  cd $CWD/gloo/build
-  if [[ $@ == *'CONDA'* ]]; then
-    cmake -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} ..
-  fi
-  make install
-fi
 
 # Build experiments
-cd $CWD/daiet/experiments/exp1/
 if [[ $@ != *'SKIP_EXPS'* ]]; then
+  cd $CWD/daiet/experiments/exp1/
   mkdir -p build
   cd build
   find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
@@ -163,8 +160,8 @@ if [[ $@ != *'SKIP_EXPS'* ]]; then
   make -j
 fi
 
-cd $CWD/daiet/experiments/exp2/
 if [[ $@ != *'SKIP_EXPS'* ]]; then
+  cd $CWD/daiet/experiments/exp2/
   mkdir -p build
   cd build
   find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
@@ -173,8 +170,8 @@ if [[ $@ != *'SKIP_EXPS'* ]]; then
 fi
 
 # Build example
-cd $CWD/daiet/example
 if [[ $@ != *'SKIP_EXAMPLE'* ]]; then
+  cd $CWD/daiet/example
   mkdir -p build
   cd build
   find . ! -name 'daiet.cfg'   ! -name '.'  ! -name '..' -exec rm -rf {} +
@@ -183,8 +180,8 @@ if [[ $@ != *'SKIP_EXAMPLE'* ]]; then
 fi
 
 # Build dedicated PS
-cd $CWD/daiet/ps
 if [[ $@ != *'SKIP_PS'* ]]; then
+  cd $CWD/daiet/ps
   make clean
   make ${PS_ARGS} -j
 fi
