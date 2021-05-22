@@ -1,0 +1,85 @@
+FROM ubuntu:18.04
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -qy \
+        autotools-dev \
+        bison \
+        build-essential \
+        ca-certificates \
+        chrpath \
+        coreutils \
+        debhelper \
+        dh-python \
+        dpatch \
+        ethtool \
+        flex \
+        gcc \
+        gfortran \
+        git \
+        graphviz \
+        iproute2 \
+        kmod \
+        libboost-program-options-dev \
+        libboost-chrono-dev \
+        libboost-system-dev \
+        libboost-thread-dev \
+        libc6-dev \
+        libelf1 \
+        libgfortran3 \
+        libglib2.0-0 \
+        libhiredis-dev \
+        libjpeg-dev \
+        libltdl-dev \
+        libmnl-dev \
+        libnl-3-200 \
+        libnl-3-dev \
+        libnl-route-3-200 \
+        libnl-route-3-dev \
+        libnuma-dev \
+        libnuma1 \
+        libpng-dev \
+        libpython3-dev \
+        libssl1.0.0 \
+        linux-headers-$(uname -r) \
+        linux-modules-$(uname -r) \
+        lsb-release \
+        lsof \
+        m4 \
+        net-tools \
+        openssh-client \
+        openssh-server \
+        pciutils \
+        perl \
+        pkg-config \
+        python3 \
+        python3-dev \
+        python3-distutils \
+        swig \
+        tk \
+        udev \
+        vim \
+        wget && rm -rf /var/lib/apt/lists/*
+
+
+# Allow OpenSSH to talk to containers without asking for confirmation
+RUN mkdir -p /var/run/sshd && cat /etc/ssh/ssh_config | grep -v StrictHostKeyChecking > /etc/ssh/ssh_config.new && \
+    echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
+    mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
+
+# MLNX driver
+ARG MOFED_VER=5.3-1.0.0.1
+RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
+        wget http://content.mellanox.com/ofed/MLNX_OFED-${MOFED_VER}/MLNX_OFED_LINUX-${MOFED_VER}-ubuntu18.04-$(uname -m).tgz && \
+        tar -xzvf *.tgz && \
+        */mlnxofedinstall --user-space-only --without-fw-update --upstream-libs --dpdk --force && \
+        cd /tmp && \
+        rm -rf mofed
+
+RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && git submodule update --init --depth 1 --recursive daiet && \
+    ./build_all.sh INSTALL MLX5 TIMERS NOSCALING ALGO2 SKIP_DAIET SKIP_GLOO SKIP_EXPS SKIP_EXAMPLE
+
+RUN cd /tmp && git clone https://dpdk.org/git/dpdk-kmods && cd dpdk-kmods/linux/igb_uio && make && \
+    UIODIR=/lib/modules/$(uname -r)/kernel/drivers/uio && \
+    install -d -m0755 $UIODIR && \
+    install -m0644 igb_uio.ko $UIODIR && \
+    depmod && modprobe igb_uio
+

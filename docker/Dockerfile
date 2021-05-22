@@ -1,5 +1,6 @@
 FROM nvidia/cuda:10.1-devel-ubuntu18.04
-RUN DEBIAN_FRONTEND="noninteractive" && apt-get update && apt-get install -y \
+RUN apt-get update && \
+    DEBIAN_FRONTEND="noninteractive" apt-get install -qy \
         autotools-dev \
         bison \
         build-essential \
@@ -13,9 +14,14 @@ RUN DEBIAN_FRONTEND="noninteractive" && apt-get update && apt-get install -y \
         flex \
         gcc \
         gfortran \
+        git \
         graphviz \
         iproute2 \
         kmod \
+        libboost-program-options-dev \
+        libboost-chrono-dev \
+        libboost-system-dev \
+        libboost-thread-dev \
         libc6-dev \
         libelf1 \
         libgfortran3 \
@@ -37,17 +43,21 @@ RUN DEBIAN_FRONTEND="noninteractive" && apt-get update && apt-get install -y \
         linux-modules-$(uname -r) \
         lsb-release \
         lsof \
+        m4 \
         net-tools \
         openssh-client \
         openssh-server \
         pciutils \
+        perl \
         pkg-config \
         python3 \
         python3-dev \
         python3-distutils \
         swig \
+        tk \
         udev \
-        wget
+        vim \
+        wget && rm -rf /var/lib/apt/lists/*
 
 
 # Allow OpenSSH to talk to containers without asking for confirmation
@@ -74,38 +84,13 @@ RUN cd ~ && \
     openmpi=4 \
     python=3.7.*=*_cpython \
     cudnn=7.6 \
-    nccl=2.7 \
-    boost-cpp \
+    nccl=2.4 \
     cudatoolkit \
-    vim git tk m4 perl \
     astunparse numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses \
     magma-cuda101 -y -c pytorch && \
     rm Mambaforge.sh
 
 SHELL ["conda", "run", "--no-capture-output", "-n", "base", "/bin/bash", "-c"]
-
-# ENV MOFED_DIR=MLNX_OFED_LINUX-5.3-1.0.0.1-ubuntu18.04-x86_64
-# ENV MOFED_SITE_PLACE=MLNX_OFED-5.3-1.0.0.1
-# ENV MOFED_IMAGE=MLNX_OFED_LINUX-5.3-1.0.0.1-ubuntu18.04-x86_64.tgz
-# RUN cd /tmp && \
-#         wget http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-#         tar -xzvf ${MOFED_IMAGE} && \
-#         ${MOFED_DIR}/mlnxofedinstall --user-space-only --without-fw-update --upstream-libs --dpdk --force && \
-#         cd .. && \
-#         rm -rf ${MOFED_DIR} && \
-#         rm -rf *.tgz
-
-# Install Open MPI
-# RUN mkdir /tmp/openmpi && \
-#     cd /tmp/openmpi && \
-#     wget -q https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.1.tar.gz && \
-#     tar zxvf openmpi-4.1.1.tar.gz && \
-#     cd openmpi-4.1.1 && \
-#     ./configure --enable-orterun-prefix-by-default && \
-#     make -j $(nproc) all && \
-#     make install && \
-#     ldconfig && \
-#     rm -rf /tmp/openmpi
 
 # Create a wrapper for OpenMPI to allow running as root by default
 # Configure OpenMPI to run good defaults:
@@ -121,7 +106,7 @@ RUN mv /root/mambaforge/bin/mpirun /root/mambaforge/bin/mpirun.real && \
 
 ENV CPLUS_INCLUDE_PATH=/root/mambaforge/include LIBRARY_PATH=/root/mambaforge/lib LD_LIBRARY_PATH=/root/mambaforge/lib
 
-ARG TORCH_CUDA_ARCH_LIST="6.0"
+ARG TORCH_CUDA_ARCH_LIST
 
 RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
     ./build_all.sh INSTALL MLX5 TIMERS CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2
