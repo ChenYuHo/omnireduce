@@ -74,12 +74,31 @@ RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
         cd /tmp && \
         rm -rf mofed
 
-RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && git submodule update --init --depth 1 --recursive daiet && \
+## Install Open MPI
+#RUN mkdir /tmp/openmpi && \
+#    cd /tmp/openmpi && \
+#    wget -q https://www.open-mpi.org/software/ompi/v4.1/downloads/openmpi-4.1.1.tar.gz && \
+#    tar zxf openmpi-4.1.1.tar.gz && \
+#    cd openmpi-4.1.1 && \
+#    ./configure --enable-orterun-prefix-by-default && \
+#    make -j $(nproc) all && \
+#    make install && \
+#    ldconfig && \
+#    rm -rf /tmp/openmpi
+#
+## Create a wrapper for OpenMPI to allow running as root by default
+## Configure OpenMPI to run good defaults:
+##   --bind-to none --map-by slot --mca btl_tcp_if_exclude lo,docker0
+#RUN mv /usr/local/bin/mpirun /usr/local/bin/mpirun.real && \
+#    echo '#!/bin/bash' > /usr/local/bin/mpirun && \
+#    echo 'mpirun.real --allow-run-as-root "$@"' >> /usr/local/bin/mpirun && \
+#    chmod a+x /usr/local/bin/mpirun && \
+#    echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
+#    echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf && \
+#    echo "btl_tcp_if_exclude = lo,docker0" >> /usr/local/etc/openmpi-mca-params.conf
+
+RUN cd ~ && git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && git submodule update --init --depth 1 --recursive daiet && \
     ./build_all.sh INSTALL MLX5 TIMERS NOSCALING ALGO2 SKIP_DAIET SKIP_GLOO SKIP_EXPS SKIP_EXAMPLE
 
-RUN cd /tmp && git clone https://dpdk.org/git/dpdk-kmods && cd dpdk-kmods/linux/igb_uio && make && \
-    UIODIR=/lib/modules/$(uname -r)/kernel/drivers/uio && \
-    install -d -m0755 $UIODIR && \
-    install -m0644 igb_uio.ko $UIODIR && \
-    depmod && modprobe igb_uio
-
+ARG OMNIREDUCE_CONTAINER_PORT=2222
+ENV OMNIREDUCE_CONTAINER_PORT ${OMNIREDUCE_CONTAINER_PORT}

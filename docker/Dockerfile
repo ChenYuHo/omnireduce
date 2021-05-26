@@ -61,7 +61,7 @@ RUN apt-get update && \
 
 
 # Allow OpenSSH to talk to containers without asking for confirmation
-RUN mkdir -p /var/run/sshd && cat /etc/ssh/ssh_config | grep -v StrictHostKeyChecking > /etc/ssh/ssh_config.new && \
+RUN mkdir -p /var/run/sshd && cat /etc/ssh/ssh_config | grep -v 'StrictHostKeyChecking' > /etc/ssh/ssh_config.new && \
     echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
     mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
 
@@ -75,40 +75,49 @@ RUN mkdir -p /tmp/mofed && cd /tmp/mofed && \
         rm -rf mofed
 
 # mamba
-ENV PATH="/root/mambaforge/bin:${PATH}"
 RUN cd ~ && \
     wget -O Mambaforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh && \
     bash Mambaforge.sh -b && \
-    mamba install \
+    /root/mambaforge/bin/mamba install \
     pip \
-    openmpi=4 \
     python=3.7.*=*_cpython \
     cudnn=7.6 \
     nccl=2.4 \
     cudatoolkit \
+    jupyter \
+    matplotlib \
     astunparse numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses \
     magma-cuda101 -y -c pytorch && \
     rm Mambaforge.sh
 
-SHELL ["conda", "run", "--no-capture-output", "-n", "base", "/bin/bash", "-c"]
+# Install Open MPI
+RUN mkdir /tmp/openmpi && \
+    cd /tmp/openmpi && \
+    wget -q https://www.open-mpi.org/software/ompi/v4.1/downloads/openmpi-4.1.1.tar.gz && \
+    tar zxf openmpi-4.1.1.tar.gz && \
+    cd openmpi-4.1.1 && \
+    ./configure --enable-orterun-prefix-by-default && \
+    make -j $(nproc) all && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/openmpi
 
 # Create a wrapper for OpenMPI to allow running as root by default
 # Configure OpenMPI to run good defaults:
 #   --bind-to none --map-by slot --mca btl_tcp_if_exclude lo,docker0
-RUN mv /root/mambaforge/bin/mpirun /root/mambaforge/bin/mpirun.real && \
-    echo '#!/bin/bash' > /root/mambaforge/bin/mpirun && \
-    echo "/root/mambaforge/bin/mpirun.real" ' --allow-run-as-root "$@"' >> /root/mambaforge/bin/mpirun && \
-    chmod a+x /root/mambaforge/bin/mpirun && \
-    echo "hwloc_base_binding_policy = none" >> /root/mambaforge/etc/openmpi-mca-params.conf && \
-    echo "rmaps_base_mapping_policy = slot" >> /root/mambaforge/etc/openmpi-mca-params.conf && \
-    echo "btl_tcp_if_exclude = lo,docker0" >> /root/mambaforge/etc/openmpi-mca-params.conf
+RUN mv /usr/local/bin/mpirun /usr/local/bin/mpirun.real && \
+    echo '#!/bin/bash' > /usr/local/bin/mpirun && \
+    echo 'mpirun.real --allow-run-as-root "$@"' >> /usr/local/bin/mpirun && \
+    chmod a+x /usr/local/bin/mpirun && \
+    echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
+    echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf && \
+    echo "btl_tcp_if_exclude = lo,docker0" >> /usr/local/etc/openmpi-mca-params.conf
 
-
+SHELL ["/root/mambaforge/bin/conda", "run", "--no-capture-output", "-n", "base", "/bin/bash", "-c"]
+ENV PATH="/root/mambaforge/bin:/root/mambaforge/condabin:${PATH}"
 ENV CPLUS_INCLUDE_PATH=/root/mambaforge/include LIBRARY_PATH=/root/mambaforge/lib LD_LIBRARY_PATH=/root/mambaforge/lib
-
 ARG TORCH_CUDA_ARCH_LIST
-
-RUN git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
+RUN cd ~ && git clone --branch docker --depth 1 https://github.com/ChenYuHo/omnireduce.git && cd omnireduce && ./prepare.sh --depth 1 && \
     ./build_all.sh INSTALL MLX5 TIMERS CONDA OFFLOAD_BITMAP NOSCALING PYTORCH ALGO2
 
 ARG EXPS_BASE_PATH=/root
@@ -151,3 +160,6 @@ RUN cd $EXPS_PATH/models/BERT/dataset/checkpoint && \
     wget --content-disposition https://api.ngc.nvidia.com/v2/models/nvidia/bert_pyt_ckpt_large_qa_squad11_amp/versions/19.09.0/zip -O bert_pyt_ckpt_large_qa_squad11_amp_19.09.0.zip && \
     unzip bert_pyt_ckpt_large_qa_squad11_amp_19.09.0.zip
 RUN cd $EXPS_PATH/models/BERT && ln -s ~/omnireduce/daiet/example/daiet.cfg daiet.cfg && mkdir results
+
+ARG OMNIREDUCE_CONTAINER_PORT=2222
+ENV OMNIREDUCE_CONTAINER_PORT ${OMNIREDUCE_CONTAINER_PORT}
